@@ -48,6 +48,8 @@ const p = (...args) => (console.log(...args), args[0])
 
 const random = x => Math.ceil(Math.random() * x)
 
+const prevent = (_, e) => e.preventDefault()
+
 const parseJson = json => {
   try {
     return JSON.parse(json)
@@ -67,6 +69,11 @@ const playSound = (sound, volume = 0.2) => {
   audio.volume = volume
   audio.src = sound
   audio.play()
+}
+
+const sounds = {
+  click: () => playSound('https://freesound.org/data/previews/67/67088_931386-lq.mp3'),
+  flag: () => playSound('https://freesound.org/data/previews/13/13290_3669-lq.mp3')
 }
 
 const Faces = processEnum('Faces', ['Smiling', 'Standby', 'Attentive'])
@@ -127,18 +134,11 @@ const GenerateBoard = (height, width, numMines) => {
   return board
 }
 
-const FlagBlock = (state, e, sq) => {
-  e.preventDefault()
+const FlagBlock = (state, sq) => {
   if (sq.uncovered) return
+  sounds.flag()
   sq.flagged = !sq.flagged
   return { numFlags: state.numFlags - (sq.flagged ? -1 : 1) }
-}
-
-const ClickSound = () => {
-  playSound('https://freesound.org/data/previews/67/67088_931386-lq.mp3')
-}
-const FlagSound = () => {
-  playSound('https://freesound.org/data/previews/13/13290_3669-lq.mp3')
 }
 
 const Restart = state => ({
@@ -160,18 +160,36 @@ const uncoverBlankNeighbors = (board, x, y, inner = false) => {
     })
 }
 
-const UncoverBlock = (state, e, sq, x, y) => {
-  if (sq.uncovered) return
-  ClickSound()
+const uncoverUnflaggedMines = board =>
+  iterateBoard(board)
+    .where(([sq]) => !sq.flagged && sq.mine)
+    .forEach(([sq]) => (sq.uncovered = true))
+
+const ClickBlock = (state, e, sq, x, y) => {
+  if (e.button === 2) return FlagBlock(state, sq)
+  if (sq.uncovered) {
+    if (
+      !sq.empty &&
+      e.button === 1 &&
+      iterateNeighbors(state.rows, x, y).any(([neighbor, nX, nY]) => {
+        if (neighbor.flagged) return false
+        neighbor.uncovered = true
+        return neighbor.mine || uncoverBlankNeighbors(state.rows, nX, nY)
+      })
+    ) {
+      uncoverUnflaggedMines(state.rows)
+      return { lost: true }
+    }
+    return
+  }
+  sounds.click()
   if (sq.flagged) {
     sq.flagged = false
     return {}
   }
   sq.uncovered = true
   if (sq.mine) {
-    iterateBoard(state.rows)
-      .where(([sq]) => !sq.flagged && sq.mine)
-      .forEach(([sq]) => (sq.uncovered = true))
+    uncoverUnflaggedMines(state.rows)
     return { lost: true }
   }
   uncoverBlankNeighbors(state.rows, x, y)
@@ -208,8 +226,8 @@ const WonLost = state => [
 const Square = (sq, row, col) => [
   'div' + b.p(2).d('inline-block'),
   {
-    oncontextmenu: (state, e) => FlagBlock(state, e, sq),
-    onclick: (state, e) => UncoverBlock(state, e, sq, row, col)
+    oncontextmenu: prevent,
+    onmouseup: (state, e) => ClickBlock(state, e, sq, row, col)
   },
   [
     'div' +
@@ -241,11 +259,7 @@ const MineField = state => [
   `,
   {
     onmousedown: SetAttentive,
-    onmouseup: SetStandby,
-    oncontextmenu: (state, e) => {
-      e.preventDefault()
-      return FlagSound(state)
-    }
+    onmouseup: SetStandby
   },
   (state.lost || state.won) && WonLost(state),
   state.rows.map((row, rowIdx) => ['div', row.map((sq, sqIdx) => Square(sq, rowIdx, sqIdx))])
