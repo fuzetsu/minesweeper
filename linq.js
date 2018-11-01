@@ -13,14 +13,14 @@ const select = function*(transform) {
   }
 }
 
-const any = function(transform) {
+const some = function(transform) {
   for (const item of this) {
     if (transform(item)) return true
   }
   return false
 }
 
-const all = function(transform) {
+const every = function(transform) {
   for (const item of this) {
     if (!transform(item)) return false
   }
@@ -35,11 +35,10 @@ const count = function(transform) {
   return count
 }
 
-const first = function(transform, fallback) {
+const find = function(transform) {
   for (const item of this) {
     if (transform(item)) return item
   }
-  return fallback
 }
 
 const forEach = function(fn) {
@@ -53,7 +52,7 @@ const toArray = function() {
 }
 
 const Generator = Object.getPrototypeOf(function*() {})
-;[where, select].forEach(fn => (Array.prototype[fn.name] = fn))
-;[where, select, toArray, forEach, any, all, count, first].forEach(
+;[where, select, count].forEach(fn => (Array.prototype[fn.name] = fn))
+;[where, select, toArray, forEach, some, every, count, find].forEach(
   fn => (Generator.prototype[fn.name] = fn)
 )

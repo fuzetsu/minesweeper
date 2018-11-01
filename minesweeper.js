@@ -184,10 +184,12 @@ const ClickBlock = (state, e, sq, x, y) => {
   sounds.click()
   if (sq.uncovered) {
     if (!sq.empty && e.button === 1) {
-      return iterateNeighbors(state.rows, x, y)
-        .where(([neighbor]) => !neighbor.flagged)
-        .select(([neighbor, nX, nY]) => UncoverBlock(state, neighbor, nX, nY))
-        .first(res => res.lost, {})
+      return (
+        iterateNeighbors(state.rows, x, y)
+          .where(([neighbor]) => !neighbor.flagged)
+          .select(([neighbor, nX, nY]) => UncoverBlock(state, neighbor, nX, nY))
+          .find(res => res.lost) || {}
+      )
     }
     return
   }
@@ -323,7 +325,7 @@ mount({
   onupdate: state => {
     localStorage.v1 = JSON.stringify(state)
     return {
-      won: iterateBoard(state.rows).all(([sq]) => sq.uncovered || sq.mine)
+      won: iterateBoard(state.rows).every(([sq]) => sq.uncovered || sq.mine)
     }
   },
   container: document.body
