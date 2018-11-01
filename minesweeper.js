@@ -160,11 +160,6 @@ const uncoverBlankNeighbors = (board, x, y, inner = false) => {
     })
 }
 
-const uncoverUnflaggedMines = board =>
-  iterateBoard(board)
-    .where(([sq]) => !sq.flagged && sq.mine)
-    .forEach(([sq]) => (sq.uncovered = true))
-
 const UncoverBlock = (state, sq, x, y) => {
   if (sq.flagged) {
     sq.flagged = false
@@ -172,7 +167,9 @@ const UncoverBlock = (state, sq, x, y) => {
   }
   sq.uncovered = true
   if (sq.mine) {
-    uncoverUnflaggedMines(state.rows)
+    iterateBoard(state.rows)
+      .where(([sq]) => !sq.flagged && sq.mine)
+      .forEach(([sq]) => (sq.uncovered = true))
     return { lost: true }
   }
   uncoverBlankNeighbors(state.rows, x, y)
