@@ -1,6 +1,6 @@
-import { patch } from 'https://unpkg.com/superfine?module'
-import 'https://unpkg.com/mithril/stream/stream.js'
-import O from 'https://unpkg.com/patchinko/immutable.mjs'
+import { patch } from 'https://unpkg.com/superfine@6?module'
+import 'https://unpkg.com/mithril@next/stream/stream.js'
+import O from 'https://unpkg.com/patchinko@4/immutable.mjs'
 
 import { makeVdom } from './vdom.js'
 

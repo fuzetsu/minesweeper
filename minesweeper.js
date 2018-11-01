@@ -1,5 +1,5 @@
-import b from 'https://unpkg.com/bss?module'
-import O from 'https://unpkg.com/patchinko/immutable.mjs'
+import b from 'https://unpkg.com/bss@1?module'
+import O from 'https://unpkg.com/patchinko@4/immutable.mjs'
 
 import './linq.js'
 import { mount } from './myosis.js'
