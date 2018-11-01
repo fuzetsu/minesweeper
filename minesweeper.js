@@ -165,24 +165,7 @@ const uncoverUnflaggedMines = board =>
     .where(([sq]) => !sq.flagged && sq.mine)
     .forEach(([sq]) => (sq.uncovered = true))
 
-const ClickBlock = (state, e, sq, x, y) => {
-  if (e.button === 2) return FlagBlock(state, sq)
-  if (sq.uncovered) {
-    if (
-      !sq.empty &&
-      e.button === 1 &&
-      iterateNeighbors(state.rows, x, y).any(([neighbor, nX, nY]) => {
-        if (neighbor.flagged) return false
-        neighbor.uncovered = true
-        return neighbor.mine || uncoverBlankNeighbors(state.rows, nX, nY)
-      })
-    ) {
-      uncoverUnflaggedMines(state.rows)
-      return { lost: true }
-    }
-    return
-  }
-  sounds.click()
+const UncoverBlock = (state, sq, x, y) => {
   if (sq.flagged) {
     sq.flagged = false
     return {}
@@ -194,6 +177,21 @@ const ClickBlock = (state, e, sq, x, y) => {
   }
   uncoverBlankNeighbors(state.rows, x, y)
   return {}
+}
+
+const ClickBlock = (state, e, sq, x, y) => {
+  if (e.button === 2) return FlagBlock(state, sq)
+  sounds.click()
+  if (sq.uncovered) {
+    if (!sq.empty && e.button === 1) {
+      return iterateNeighbors(state.rows, x, y)
+        .where(([neighbor]) => !neighbor.flagged)
+        .select(([neighbor, nX, nY]) => UncoverBlock(state, neighbor, nX, nY))
+        .first(res => res.lost, {})
+    }
+    return
+  }
+  return UncoverBlock(state, sq, x, y)
 }
 
 const SetSmiling = state => ({ face: Faces.Smiling })

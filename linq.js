@@ -1,5 +1,5 @@
 // copied and expanded from https://surfingthecode.com/linq-like-functions-in-javascript-with-deferred-execution/
-const whereGenerator = function*(isMatch) {
+const where = function*(isMatch) {
   for (const item of this) {
     if (isMatch(item)) {
       yield item
@@ -7,27 +7,27 @@ const whereGenerator = function*(isMatch) {
   }
 }
 
-const selectGenerator = function*(transform) {
+const select = function*(transform) {
   for (const item of this) {
     yield transform(item)
   }
 }
 
-const anyFunction = function(transform) {
+const any = function(transform) {
   for (const item of this) {
     if (transform(item)) return true
   }
   return false
 }
 
-const allFunction = function(transform) {
+const all = function(transform) {
   for (const item of this) {
     if (!transform(item)) return false
   }
   return true
 }
 
-const countFunction = function(transform) {
+const count = function(transform) {
   let count = 0
   for (const item of this) {
     if (transform(item)) count += 1
@@ -35,28 +35,25 @@ const countFunction = function(transform) {
   return count
 }
 
-const forEachFunction = function(fn) {
+const first = function(transform, fallback) {
+  for (const item of this) {
+    if (transform(item)) return item
+  }
+  return fallback
+}
+
+const forEach = function(fn) {
   for (const item of this) {
     fn(item)
   }
 }
 
-const toArrayFunction = function() {
+const toArray = function() {
   return Array.from(this)
 }
 
-// obtain generator prototype object
 const Generator = Object.getPrototypeOf(function*() {})
-
-// extend prototypes
-Generator.prototype.where = whereGenerator
-Array.prototype.where = whereGenerator
-
-Generator.prototype.select = selectGenerator
-Array.prototype.select = selectGenerator
-
-Generator.prototype.toArray = toArrayFunction
-Generator.prototype.forEach = forEachFunction
-Generator.prototype.any = anyFunction
-Generator.prototype.all = allFunction
-Generator.prototype.count = countFunction
+;[where, select].forEach(fn => (Array.prototype[fn.name] = fn))
+;[where, select, toArray, forEach, any, all, count, first].forEach(
+  fn => (Generator.prototype[fn.name] = fn)
+)
