@@ -1,5 +1,7 @@
 # Minesweeper
 
+[Try it here!](https://fuzetsu.github.io/minesweeper/)
+
 Simple little minesweeper app built using:
 
 - [superfine](https://github.com/jorgebucaran/superfine) as the view
