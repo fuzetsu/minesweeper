@@ -44,6 +44,8 @@ b.helper(
   `
 )
 
+b.helper('alignContentBottom', b.d('flex').ai('flex-end'))
+
 const p = (...args) => (console.log(...args), args[0])
 
 const random = x => Math.ceil(Math.random() * x)
@@ -138,7 +140,7 @@ const FlagBlock = (state, sq) => {
   if (sq.uncovered) return
   sounds.flag()
   sq.flagged = !sq.flagged
-  return { numFlags: state.numFlags - (sq.flagged ? -1 : 1) }
+  return {}
 }
 
 const Restart = state => ({
@@ -220,11 +222,15 @@ const WonLost = state => [
   ]
 ]
 
-const Square = (sq, row, col) => [
-  'div' + b.p(2).d('inline-block'),
+const Square = (state, sq, row, col) => [
+  'div' +
+    b
+      .p(2)
+      .d('inline-block')
+      .cursor(!sq.empty && 'pointer'),
   {
     oncontextmenu: prevent,
-    onmouseup: (state, e) => ClickBlock(state, e, sq, row, col)
+    onmouseup: (state, e) => (sq.uncovered && sq.empty) || ClickBlock(state, e, sq, row, col)
   },
   [
     'div' +
@@ -235,7 +241,9 @@ const Square = (sq, row, col) => [
       fw bold
       c black
     `.inlineFlexCenter.bc(sq.uncovered && sq.empty ? '#999' : '#eee'),
-    sq.flagged ? ['div' + b.position('absolute').ff('50%'), '🚩'] : '',
+    sq.flagged
+      ? ['div' + b.position('absolute').ff('50%'), state.lost ? (sq.mine ? '✔️' : '❌') : '🚩']
+      : '',
     [
       'div' +
         b
@@ -250,16 +258,11 @@ const MineField = state => [
   'div' +
     b`
     d inline-block
-    cursor pointer
     position relative
     w ${state.width * 29}
   `,
-  {
-    onmousedown: SetAttentive,
-    onmouseup: SetStandby
-  },
   (state.lost || state.won) && WonLost(state),
-  state.rows.map((row, rowIdx) => ['div', row.map((sq, sqIdx) => Square(sq, rowIdx, sqIdx))])
+  state.rows.map((row, rowIdx) => ['div', row.map((sq, sqIdx) => Square(state, sq, rowIdx, sqIdx))])
 ]
 
 const StatusBar = state => [
@@ -269,24 +272,28 @@ const StatusBar = state => [
     jc space-between
     fs 250%
   `,
-  ['span', '💣 ', state.numMines],
+  ['span' + b.alignContentBottom, '💣 ', state.numMines],
   [
-    'span' + b.cursor('pointer'),
-    {
-      onmousedown: SetSmiling,
-      onmouseup: SetStandby,
-      onmouseleave: SetStandby,
-      onclick: Restart
-    },
-    state.face === Faces.Smiling
-      ? '😊'
-      : state.lost
-        ? '😴'
-        : state.face === Faces.Attentive
-          ? '😮'
-          : '😑'
+    'div' + b.d('inline-block'),
+    [
+      'div' + b.cursor('pointer'),
+      {
+        onmousedown: SetSmiling,
+        onmouseup: SetStandby,
+        onmouseleave: SetStandby,
+        onclick: Restart
+      },
+      state.face === Faces.Smiling
+        ? '😊'
+        : state.lost
+          ? '😴'
+          : state.face === Faces.Attentive
+            ? '😮'
+            : '😑'
+    ],
+    ['div' + b.fs('120%'), state.remainingSquares]
   ],
-  ['span', state.numFlags, ' 🚩']
+  ['span' + b.alignContentBottom, state.numFlags, ' 🚩']
 ]
 
 const MineSweeper = state => [
@@ -295,6 +302,10 @@ const MineSweeper = state => [
       .ta('center')
       .userSelect('none')
       .$media('(min-width: 768px)', b.fillParent.flexCenter),
+  {
+    onmousedown: SetAttentive,
+    onmouseup: SetStandby
+  },
   ['div' + b.d('inline-block'), StatusBar(state), MineField(state)]
 ]
 
@@ -302,27 +313,41 @@ const ls = parseJson(localStorage.v1)
 
 const init = O(
   {
-    numFlags: 0,
     lost: false,
     won: false,
-    face: Faces.Standby,
-    rows: GenerateBoard(20, 20, 75)
+    face: Faces.Standby
   },
   ls,
   {
-    height: 20,
-    width: 20,
-    numMines: 75
+    height: 15,
+    width: 18,
+    numMines: 40
   }
 )
+
+if (
+  !init.rows ||
+  init.rows.length !== init.height ||
+  !init.rows[0] ||
+  init.rows[0].length !== init.width
+)
+  init.rows = GenerateBoard(init.height, init.width, init.numMines)
 
 mount({
   init,
   view: MineSweeper,
   onupdate: state => {
     localStorage.v1 = JSON.stringify(state)
+    let remainingSquares = 0,
+      numFlags = 0
+    iterateBoard(state.rows).forEach(([sq]) => {
+      if (!sq.uncovered && !sq.mine) remainingSquares += 1
+      if (sq.flagged) numFlags += 1
+    })
     return {
-      won: iterateBoard(state.rows).every(([sq]) => sq.uncovered || sq.mine)
+      remainingSquares,
+      numFlags,
+      won: remainingSquares === 0
     }
   },
   container: document.body
