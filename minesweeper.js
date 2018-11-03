@@ -80,6 +80,17 @@ const sounds = {
 
 const Faces = processEnum('Faces', ['Smiling', 'Standby', 'Attentive'])
 
+const colorMap = {
+  1: 'blue',
+  2: 'red',
+  3: 'green',
+  4: 'purple',
+  5: 'salmon',
+  6: 'hotpink',
+  7: 'darkgrey',
+  8: 'black'
+}
+
 function* iterateBoard(board) {
   for (let x = 0; x < board.length; x++) {
     for (let y = 0; y < board[x].length; y++) {
@@ -182,9 +193,11 @@ const ClickBlock = (state, e, sq, x, y) => {
   if (e.button === 2) return FlagBlock(state, sq)
   sounds.click()
   if (sq.uncovered) {
-    if (!sq.empty && e.button === 1) {
+    if (!sq.empty) {
+      const neighbors = iterateNeighbors(state.rows, x, y).toArray()
+      if (neighbors.count(([neighbor]) => neighbor.flagged) !== sq.nearbyMines) return
       return (
-        iterateNeighbors(state.rows, x, y)
+        neighbors
           .where(([neighbor]) => !neighbor.flagged)
           .select(([neighbor, nX, nY]) => UncoverBlock(state, neighbor, nX, nY))
           .find(res => res.lost) || {}
@@ -239,8 +252,9 @@ const Square = (state, sq, row, col) => [
       h 25
       lh 25
       fw bold
-      c black
-    `.inlineFlexCenter.bc(sq.uncovered && sq.empty ? '#999' : '#eee'),
+    `.inlineFlexCenter
+        .bc(sq.uncovered && sq.empty ? '#999' : '#eee')
+        .c(colorMap[sq.nearbyMines]),
     sq.flagged
       ? ['div' + b.position('absolute').ff('50%'), state.lost ? (sq.mine ? '✔️' : '❌') : '🚩']
       : '',
