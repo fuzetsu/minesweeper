@@ -13,6 +13,20 @@ const select = function*(transform) {
   }
 }
 
+const groupBy = function*(transform) {
+  const seen = new Set()
+  const arr = this.toArray()
+  yield* arr
+    .select(transform)
+    .where(key => key && !seen.has(key))
+    .select(key => {
+      seen.add(key)
+      const iter = arr.where(i => key === transform(i))
+      iter.key = key
+      return iter
+    })
+}
+
 const some = function(transform) {
   for (const item of this) {
     if (transform(item)) return true
@@ -27,7 +41,7 @@ const every = function(transform) {
   return true
 }
 
-const count = function(transform) {
+const count = function(transform = () => true) {
   let count = 0
   for (const item of this) {
     if (transform(item)) count += 1
@@ -52,7 +66,7 @@ const toArray = function() {
 }
 
 const Generator = Object.getPrototypeOf(function*() {})
-;[where, select, count].forEach(fn => (Array.prototype[fn.name] = fn))
-;[where, select, toArray, forEach, some, every, count, find].forEach(
+;[where, select, groupBy, count].forEach(fn => (Array.prototype[fn.name] = fn))
+;[where, select, groupBy, toArray, forEach, some, every, count, find].forEach(
   fn => (Generator.prototype[fn.name] = fn)
 )

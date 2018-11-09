@@ -9,42 +9,38 @@ b.setDebug(true)
 b.css(
   'html',
   `
+  --text-color white
+  --bg-color #999
+  
   ff monospace
-  bc #999
-  c white
+  bc var(--bg-color)
+  c var(--text-color)
   `
 )
 
-b.helper(
-  'fillParent',
-  b`
-  position absolute
-  top 0
-  bottom 0
-  left 0
-  right 0
+b.helper({
+  fillParent: `
+    position absolute
+    top 0
+    bottom 0
+    left 0
+    right 0
+  `,
+  flexCenter: `
+    display flex
+    align-items center
+    justify-content center
+  `,
+  inlineFlexCenter: `
+    display inline-flex
+    align-items center
+    justify-content center
+  `,
+  alignContentBottom: `
+    display flex
+    align-items flex-end
   `
-)
-
-b.helper(
-  'flexCenter',
-  b`
-  display flex
-  align-items center
-  justify-content center
-  `
-)
-
-b.helper(
-  'inlineFlexCenter',
-  b`
-  display inline-flex
-  align-items center
-  justify-content center
-  `
-)
-
-b.helper('alignContentBottom', b.d('flex').ai('flex-end'))
+})
 
 const p = (...args) => (console.log(...args), args[0])
 
@@ -60,11 +56,8 @@ const parseJson = json => {
   }
 }
 
-const processEnum = (name, members) => {
-  const out = {}
-  members.forEach(m => (out[m] = `${name}(${m})`))
-  return Object.freeze(out)
-}
+const processEnum = (name, members) =>
+  Object.freeze(members.reduce((out, mem) => ({ ...out, [mem]: `${name}(${mem})` }), {}))
 
 const playSound = (sound, volume = 0.2) => {
   const audio = new Audio()
@@ -102,6 +95,7 @@ function* iterateBoard(board) {
 function* iterateNeighbors(board, x, y) {
   for (let i = -1; i <= 1; i++) {
     for (let j = -1; j <= 1; j++) {
+      if (i === 0 && j === 0) continue
       const neighbor = (board[x + i] || [])[y + j]
       if (neighbor) yield [neighbor, x + i, y + j]
     }
@@ -112,7 +106,7 @@ const GenerateBoard = (height, width, numMines) => {
   if (numMines > height * width) throw 'Too many mines m8'
 
   const setMine = () => {
-    const sq = board[random(board.length - 1)][random(board[0].length - 1)]
+    const sq = board[random(height - 1)][random(width - 1)]
     return sq.mine ? false : (sq.mine = true)
   }
 
@@ -132,7 +126,7 @@ const GenerateBoard = (height, width, numMines) => {
         }))
     )
 
-  while (--numMines) {
+  while (--numMines >= 0) {
     while (!setMine()) {}
   }
 
@@ -147,7 +141,8 @@ const GenerateBoard = (height, width, numMines) => {
   return board
 }
 
-const FlagBlock = (state, sq) => {
+const FlagSquare = (e, sq) => {
+  e.preventDefault()
   if (sq.uncovered) return
   sounds.flag()
   sq.flagged = !sq.flagged
@@ -173,11 +168,8 @@ const uncoverBlankNeighbors = (board, x, y, inner = false) => {
     })
 }
 
-const UncoverBlock = (state, sq, x, y) => {
-  if (sq.flagged) {
-    sq.flagged = false
-    return {}
-  }
+const UncoverSquare = (state, sq, x, y) => {
+  if (sq.flagged) return
   sq.uncovered = true
   if (sq.mine) {
     iterateBoard(state.rows)
@@ -189,28 +181,31 @@ const UncoverBlock = (state, sq, x, y) => {
   return {}
 }
 
-const ClickBlock = (state, e, sq, x, y) => {
-  if (e.button === 2) return FlagBlock(state, sq)
-  sounds.click()
+const ClickSquare = (state, sq, x, y) => {
+  if (sq.flagged) return
   if (sq.uncovered) {
-    if (!sq.empty) {
-      const neighbors = iterateNeighbors(state.rows, x, y).toArray()
-      if (neighbors.count(([neighbor]) => neighbor.flagged) !== sq.nearbyMines) return
-      return (
-        neighbors
-          .where(([neighbor]) => !neighbor.flagged)
-          .select(([neighbor, nX, nY]) => UncoverBlock(state, neighbor, nX, nY))
-          .find(res => res.lost) || {}
-      )
-    }
-    return
+    if (sq.empty) return
+    const neighbors = iterateNeighbors(state.rows, x, y).toArray()
+    if (
+      neighbors.count(([neighbor]) => neighbor.flagged) !== sq.nearbyMines ||
+      neighbors.every(([neighbor]) => neighbor.uncovered || neighbor.flagged)
+    )
+      return
+    sounds.click()
+    return (
+      neighbors
+        .where(([neighbor]) => !neighbor.flagged)
+        .select(([neighbor, nX, nY]) => UncoverSquare(state, neighbor, nX, nY))
+        .find(res => res.lost) || {}
+    )
   }
-  return UncoverBlock(state, sq, x, y)
+  sounds.click()
+  return UncoverSquare(state, sq, x, y)
 }
 
-const SetSmiling = state => ({ face: Faces.Smiling })
-const SetAttentive = state => ({ face: Faces.Attentive })
-const SetStandby = state => ({ face: Faces.Standby })
+const SetSmiling = () => ({ face: Faces.Smiling })
+const SetAttentive = () => ({ face: Faces.Attentive })
+const SetStandby = () => ({ face: Faces.Standby })
 
 const WonLost = state => [
   'div' +
@@ -241,10 +236,14 @@ const Square = (state, sq, row, col) => [
       .p(2)
       .d('inline-block')
       .cursor(!sq.empty && 'pointer'),
-  {
-    oncontextmenu: prevent,
-    onmouseup: (state, e) => (sq.uncovered && sq.empty) || ClickBlock(state, e, sq, row, col)
-  },
+  sq.uncovered && sq.empty
+    ? {
+        oncontextmenu: prevent
+      }
+    : {
+        oncontextmenu: (_, e) => FlagSquare(e, sq),
+        onclick: state => ClickSquare(state, sq, row, col)
+      },
   [
     'div' +
       b`
@@ -252,11 +251,14 @@ const Square = (state, sq, row, col) => [
       h 25
       lh 25
       fw bold
-    `.inlineFlexCenter
-        .bc(sq.uncovered && sq.empty ? '#999' : '#eee')
-        .c(colorMap[sq.nearbyMines]),
+      bc ${sq.uncovered && sq.empty ? '#999' : '#eee'}
+      c ${colorMap[sq.nearbyMines]}
+    `.inlineFlexCenter,
     sq.flagged
-      ? ['div' + b.position('absolute').ff('50%'), state.lost ? (sq.mine ? '✔️' : '❌') : '🚩']
+      ? [
+          'div' + b.position('absolute').c(state.lost && sq.mine ? 'green' : 'red'),
+          !state.lost ? '🚩' : sq.mine ? '✔️' : '❌'
+        ]
       : '',
     [
       'div' +
@@ -300,12 +302,17 @@ const StatusBar = state => [
       state.face === Faces.Smiling
         ? '😊'
         : state.lost
-          ? '😴'
-          : state.face === Faces.Attentive
-            ? '😮'
-            : '😑'
+        ? '😴'
+        : state.face === Faces.Attentive
+        ? '😮'
+        : '😑'
     ],
-    ['div' + b.fs('120%'), state.remainingSquares]
+    [
+      'div' + b.fs('120%'),
+      state.height * state.width - state.remainingSquares,
+      '/',
+      state.height * state.width
+    ]
   ],
   ['span' + b.alignContentBottom, state.numFlags, ' 🚩']
 ]
@@ -354,10 +361,9 @@ mount({
     localStorage.v1 = JSON.stringify(state)
     let remainingSquares = 0,
       numFlags = 0
-    iterateBoard(state.rows).forEach(([sq]) => {
-      if (!sq.uncovered && !sq.mine) remainingSquares += 1
-      if (sq.flagged) numFlags += 1
-    })
+    iterateBoard(state.rows).forEach(([sq]) =>
+      sq.flagged ? numFlags++ : !sq.uncovered ? remainingSquares++ : null
+    )
     return {
       remainingSquares,
       numFlags,
