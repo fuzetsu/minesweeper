@@ -1,4 +1,4 @@
-import b from 'https://unpkg.com/bss@1?module'
+import b from 'https://unpkg.com/bss@1.6.3/bss.esm.js'
 import O from 'https://unpkg.com/patchinko@4/immutable.mjs'
 
 import './linq.js'
@@ -42,7 +42,7 @@ b.helper({
   `
 })
 
-const p = (...args) => (console.log(...args), args[0])
+// const p = (...args) => (console.log(...args), args[0])
 
 const random = x => Math.ceil(Math.random() * x)
 
@@ -51,7 +51,7 @@ const prevent = (_, e) => e.preventDefault()
 const parseJson = json => {
   try {
     return JSON.parse(json)
-  } catch {
+  } catch (e) {
     return {}
   }
 }
@@ -127,13 +127,13 @@ const GenerateBoard = (height, width, numMines) => {
     )
 
   while (--numMines >= 0) {
-    while (!setMine()) {}
+    while (!setMine()) {} // eslint-disable-line
   }
 
   iterateBoard(board)
     .where(([sq]) => !sq.mine)
     .forEach(([sq, x, y]) => {
-      let count = countNearbyMines(x, y)
+      const count = countNearbyMines(x, y)
       if (count < 1) sq.empty = true
       sq.nearbyMines = count || '-'
     })

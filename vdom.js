@@ -1,4 +1,4 @@
-const boundaryRegex = /[\.#\[]/
+const boundaryRegex = /[.#[]/
 
 const processTag = (tag, attrs = {}) => {
   // 1. get clean tag
@@ -11,22 +11,22 @@ const processTag = (tag, attrs = {}) => {
   if (!boundary) return [tag, attrs]
   const cleanTag = tag.slice(0, boundary.index)
   // 2. figure out props
-  let props = tag.slice(boundary.index)
+  const props = tag.slice(boundary.index)
   attrs.class = ''
   let index = 0
   while (index < props.length) {
-    let c = props[index]
+    const c = props[index]
     if (c === '.' || c === '#') {
       boundary = props.slice(index + 1).match(boundaryRegex)
-      let newIndex = boundary ? index + boundary.index : props.length
-      let id = props.slice(index + 1, newIndex + 1)
+      const newIndex = boundary ? index + boundary.index : props.length
+      const id = props.slice(index + 1, newIndex + 1)
       index = newIndex
       if (c === '.') attrs.class += ' ' + id
       else attrs.id = id
     } else if (c === '[') {
-      let newIndex = index + props.slice(index).indexOf(']')
+      const newIndex = index + props.slice(index).indexOf(']')
       if (newIndex < index) throw Error('invalid selector: ' + tag)
-      let [prop, val] = props.slice(index + 1, newIndex).split('=')
+      const [prop, val] = props.slice(index + 1, newIndex).split('=')
       index = newIndex
       if (prop) attrs[prop] = val || true
     }

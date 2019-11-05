@@ -1,19 +1,19 @@
-import { patch } from 'https://unpkg.com/superfine@6?module'
-import 'https://unpkg.com/mithril@next/stream/stream.js'
+/* globals m */
+import { patch } from 'https://unpkg.com/superfine@6.0.1/src/index.js'
+import 'https://unpkg.com/mithril@2.0.4/stream/stream.js'
 import O from 'https://unpkg.com/patchinko@4/immutable.mjs'
 
 import { makeVdom } from './vdom.js'
 
 const makeWiredVdom = wireAction =>
-  makeVdom(
-    node =>
-      typeof node === 'string'
-        ? { name: node, props: {}, type: 2, children: [] }
-        : {
-            name: node.tag,
-            props: processAttrs(node.attrs, wireAction),
-            children: node.children || []
-          }
+  makeVdom(node =>
+    typeof node === 'string'
+      ? { name: node, props: {}, type: 2, children: [] }
+      : {
+          name: node.tag,
+          props: processAttrs(node.attrs, wireAction),
+          children: node.children || []
+        }
   )
 
 const makeActionWirer = (update, states, cache = new WeakMap()) => act => {
